@@ -1,0 +1,28 @@
+{
+  "name": "pets",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix client\"",
+    "start": "concurrently \"npm start --prefix backend\" \"npm start --prefix client\"",
+    "build": "concurrently \"npm run build --prefix backend\" \"npm run build --prefix client\"",
+    "install-all": "npm install --prefix backend && npm install --prefix client"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.11",
+    "autoprefixer": "^10.4.22",
+    "axios": "^1.13.2",
+    "postcss": "^8.5.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.6",
+    "react-scripts": "^5.0.1",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
+  }
+}
