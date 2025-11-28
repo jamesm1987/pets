@@ -11,7 +11,7 @@ function PetList() {
   const [search, setSearch] = useState<string>("");
   const [animalType, setAnimalType] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-
+  
   // Debounce search input with 500ms delay
   const debouncedSearch = useDebounce(search, 500);
 
@@ -20,7 +20,7 @@ function PetList() {
     isLoading,
     error,
   } = usePets(debouncedSearch || undefined, animalType || undefined);
-
+  
   if (isLoading) {
     return <Loading message="Loading pets..." />;
   }
@@ -82,7 +82,6 @@ function PetList() {
           </div>
         </div>
 
-        {/* Pets List */}
         {pets && pets.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {pets.map((pet) => (

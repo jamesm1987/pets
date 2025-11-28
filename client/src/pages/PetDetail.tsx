@@ -1,0 +1,290 @@
+import { useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+
+import Loading from "../components/Loading";
+import Error from "../components/Error";
+import PetDetailHeader from "../components/PetDetailHeader";
+import MedicalRecordCard from "../components/MedicalRecordCard";
+import PetInfoCard from "../components/PetInfoCard";
+import RecordFormModal from "../components/RecordFormModal";
+import ConfirmModal from "../components/ConfirmModal";
+import { usePet } from "../hooks/usePet";
+import { useRecords } from "../hooks/useRecords";
+import { useDeletePet } from "../hooks/usePetMutations";
+import { useDeleteRecord } from "../hooks/useRecordMutations";
+
+function PetDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const petId = id ? parseInt(id, 10) : 0;
+  const [isRecordModalOpen, setIsRecordModalOpen] = useState<boolean>(false);
+  const [editingRecordId, setEditingRecordId] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+  const [showDeleteRecordConfirm, setShowDeleteRecordConfirm] = useState<{
+    isOpen: boolean;
+    recordId: number | null;
+    recordName: string;
+  }>({ isOpen: false, recordId: null, recordName: "" });
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const {
+    data: pet,
+    isLoading: petLoading,
+    error: petError,
+  } = usePet(petId, { refetchOnMount: true });
+
+  const {
+    data: records,
+    isLoading: recordsLoading,
+    error: recordsError,
+  } = useRecords(petId);
+
+  const vaccines = records?.filter((r) => r.record_type === "vaccine") || [];
+  const allergies = records?.filter((r) => r.record_type === "allergy") || [];
+
+  const deleteMutation = useDeletePet();
+  const deleteRecordMutation = useDeleteRecord(petId);
+
+  const handleDelete = useCallback(() => {
+    if (!pet) return;
+    setShowDeleteConfirm(true);
+  }, [pet]);
+
+  const handleConfirmDelete = useCallback(() => {
+    deleteMutation.mutate(petId, {
+      onSuccess: () => {
+        navigate("/pets");
+      },
+      onError: (error: any) => {
+        const errorMessage =
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to delete pet. Please try again.";
+        setDeleteError(errorMessage);
+        setTimeout(() => setDeleteError(null), 5000);
+      },
+    });
+  }, [deleteMutation, petId, navigate]);
+
+  const handleDeleteRecord = useCallback(
+    (recordId: number, recordName: string) => {
+      setShowDeleteRecordConfirm({ isOpen: true, recordId, recordName });
+    },
+    []
+  );
+
+  const handleConfirmDeleteRecord = useCallback(() => {
+    if (showDeleteRecordConfirm.recordId) {
+      deleteRecordMutation.mutate(showDeleteRecordConfirm.recordId);
+      setShowDeleteRecordConfirm({
+        isOpen: false,
+        recordId: null,
+        recordName: "",
+      });
+    }
+  }, [showDeleteRecordConfirm.recordId, deleteRecordMutation]);
+
+  const handleEditRecord = useCallback(
+    (recordId: number) => {
+      const record = records?.find((r) => r.id === recordId);
+      if (record) {
+        setEditingRecordId(recordId);
+        setIsRecordModalOpen(true);
+      }
+    },
+    [records]
+  );
+
+  const handleCloseRecordModal = useCallback(() => {
+    setIsRecordModalOpen(false);
+    setEditingRecordId(null);
+  }, []);
+
+  const handleExportRecords = useCallback(() => {
+    if (!pet) return;
+
+    const exportData = {
+      pet: {
+        id: pet.id,
+        name: pet.name,
+        animal_type: pet.animal_type,
+        owner_name: pet.owner_name,
+        date_of_birth: pet.date_of_birth,
+      },
+      records: records || [],
+      exportedAt: new Date().toISOString(),
+    };
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${pet.name}_medical_records_${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [pet, records]);
+
+  if (petLoading || recordsLoading) {
+    return <Loading message="Loading pet details..." />;
+  }
+
+  if (petError || recordsError || !pet) {
+    return <Error message="Error loading pet details" />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <PetDetailHeader
+          petId={petId}
+          onDelete={handleDelete}
+          isDeleting={deleteMutation.isPending}
+        />
+
+        {/* Error Message */}
+        {deleteError && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-red-600 text-xl">⚠️</span>
+              <p className="text-red-800">{deleteError}</p>
+            </div>
+            <button
+              onClick={() => setDeleteError(null)}
+              className="text-red-600 hover:text-red-800 text-xl"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Pet Information Card */}
+        <PetInfoCard
+          name={pet.name}
+          animal_type={pet.animal_type}
+          owner_name={pet.owner_name}
+          date_of_birth={pet.date_of_birth}
+        />
+
+        {/* Medical Records Section */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">Medical Records</h2>
+            <div className="flex gap-3">
+              <button
+                onClick={handleExportRecords}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+                title="Export pet records as JSON"
+              >
+                📥 Export Records
+              </button>
+              <button
+                onClick={() => setIsRecordModalOpen(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              >
+                Add Record
+              </button>
+            </div>
+          </div>
+
+          {/* Vaccines */}
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold mb-4">
+              Vaccines ({vaccines.length})
+            </h3>
+            {vaccines.length > 0 ? (
+              <div className="space-y-3">
+                {vaccines.map((vaccine) => (
+                  <MedicalRecordCard
+                    key={vaccine.id}
+                    id={vaccine.id}
+                    name={vaccine.name}
+                    record_type={vaccine.record_type}
+                    date={vaccine.date}
+                    severity={vaccine.severity}
+                    reactions={vaccine.reactions}
+                    onEdit={handleEditRecord}
+                    onDelete={(id) => handleDeleteRecord(id, vaccine.name)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No vaccines recorded</p>
+            )}
+          </div>
+
+          {/* Allergies */}
+          <div>
+            <h3 className="text-xl font-semibold mb-4">
+              Allergies ({allergies.length})
+            </h3>
+            {allergies.length > 0 ? (
+              <div className="space-y-3">
+                {allergies.map((allergy) => (
+                  <MedicalRecordCard
+                    key={allergy.id}
+                    id={allergy.id}
+                    name={allergy.name}
+                    record_type={allergy.record_type}
+                    date={allergy.date}
+                    severity={allergy.severity}
+                    reactions={allergy.reactions}
+                    onEdit={handleEditRecord}
+                    onDelete={(id) => handleDeleteRecord(id, allergy.name)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No allergies recorded</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <RecordFormModal
+        isOpen={isRecordModalOpen}
+        onClose={handleCloseRecordModal}
+        petId={petId}
+        record={
+          editingRecordId
+            ? records?.find((r) => r.id === editingRecordId) || null
+            : null
+        }
+      />
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Pet"
+        message={`Are you sure you want to delete "${pet?.name}"?\n\nThis will also delete all associated medical records (vaccines and allergies).\n\nThis action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      <ConfirmModal
+        isOpen={showDeleteRecordConfirm.isOpen}
+        onClose={() =>
+          setShowDeleteRecordConfirm({
+            isOpen: false,
+            recordId: null,
+            recordName: "",
+          })
+        }
+        onConfirm={handleConfirmDeleteRecord}
+        title="Delete Medical Record"
+        message={`Are you sure you want to delete "${showDeleteRecordConfirm.recordName}"?\n\nThis action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+    </div>
+  );
+}
+
+export default PetDetail;
