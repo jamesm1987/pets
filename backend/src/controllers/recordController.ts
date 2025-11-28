@@ -124,7 +124,7 @@ export const createRecord = async (
             return;
         }
 
-        const pet = await recordQueries.getById(petId);
+        const pet = await petQueries.getById(petId);
 
         if (!pet) {
             res.status(404).json({ message: 'Pet not found' });

@@ -67,7 +67,7 @@ export function useRecordForm(
   const [errors, setErrors] = useState<
     Partial<Record<keyof CreateRecordFormData, string>>
   >({});
-
+  console.log(petId);
   const createMutation = useCreateRecord(petId);
   const updateMutation = useUpdateRecord(petId);
 

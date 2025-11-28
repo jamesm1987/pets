@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import FormField from "./FormField";
 import { type CreateRecordFormData } from "../hooks/useRecordForm";
-import { type useVaccineAutocomplete } from "../hooks/useVaccineAutocomplete";
+import { useVaccineAutocomplete } from "../hooks/useVaccineAutocomplete";
 
 interface RecordFormFieldsProps {
   formData: CreateRecordFormData;
@@ -34,7 +34,6 @@ function RecordFormFields({
 
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Show suggestions when input is focused and we have a search term
   useEffect(() => {
     if (isInputFocused && formData.name && formData.name.trim().length >= 2) {
       setShowSuggestions(true);

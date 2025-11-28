@@ -16,7 +16,7 @@ function PetList() {
   const debouncedSearch = useDebounce(search, 500);
 
   const {
-    data: pets,
+    data: pets = [],
     isLoading,
     error,
   } = usePets(debouncedSearch || undefined, animalType || undefined);
@@ -82,7 +82,7 @@ function PetList() {
           </div>
         </div>
 
-        {pets && pets.length > 0 ? (
+        {pets.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {pets.map((pet) => (
               <PetCard key={pet.id} {...pet} />

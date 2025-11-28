@@ -10,5 +10,6 @@ export function usePets(search?: string, animalType?: string) {
             const response = await petService.getAll(search, animalType);
             return response.data;
         },
+        
     });
 }
